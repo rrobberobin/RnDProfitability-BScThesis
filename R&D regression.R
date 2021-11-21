@@ -464,8 +464,10 @@ BP = bptest(firmFixedVinstMarginal)
 
 #Multikollinearitet
 library(car)
-vif(firmFixedVinstMarginal)
+vifResultat = vif(firmFixedVinstMarginal)
 #Vif rule of thumb: if vif>10, we have multicollinearity
+write.csv(vifResultat, "vif.csv")
+
 
 #Slumpmässig eller fasteffekt
 #phtest(random,fixed)
@@ -477,7 +479,7 @@ library(stargazer)
 stargazer(
   firmFixedVinstMarginal,
   type = "text",
-  #out = "model.html",
+  out = "modell.html",
   title = "Modell",
   style = "default",
   omit=c("Företag","Sektor"),
@@ -500,7 +502,7 @@ robustHCse    = sqrt(diag(vcovHC(reg1, type=c("HC0"))));
 
 
 library(stargazer);
-stargazer(reg1,
+stargazer(firmFixedVinstMarginal,
           type="text", 
           dep.var.caption = "", 
           dep.var.labels = NULL, 
