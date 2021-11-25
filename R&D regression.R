@@ -27,22 +27,19 @@ numberOfFirms = nrow(df)
 #Data splitting----
 #R&D
 filterRD = sapply(names(df), grepl, pattern="R&D Exp")
-RD = as.matrix(df[filterRD])
-
-#Revenue
-filterRev = sapply(names(df), grepl, pattern="Total Revenue")
-revenue = as.matrix(df[filterRev])
-revenue[revenue < 0] = NA
+RD = df[filterRD]
+#RDChange = mapply(function(x,y) x-y, RDChange[,-1],RDChange[,-ncol(RDChange)])
+RDChange = RD[,-1] - RD[,-ncol(RD)]
 
 #Net income
 filterNI = sapply(names(df), grepl, pattern="Net Income")
-netIncome = as.matrix(df[filterNI])
+netIncome = df[filterNI]
+NIChange = netIncome[,-1] - netIncome[,-ncol(netIncome)]
 
-#Changes
-firstDropped = netIncome[,1:(ncol(netIncome)-1)]
-lastDropped = netIncome[,2:ncol(netIncome)]
-netIncomeChange = mapply(function(x,y) y-x, firstDropped,lastDropped)
-#Too long = something wrong
+#Revenue
+filterRev = sapply(names(df), grepl, pattern="Total Revenue")
+revenue = df[filterRev]
+revenue[revenue < 0] = NA
 
 #Employees
 #filterEmploy = sapply(names(df), grepl, pattern="Total Employees")
@@ -50,74 +47,110 @@ netIncomeChange = mapply(function(x,y) y-x, firstDropped,lastDropped)
 
 #Capex
 filterCapex = sapply(names(df), grepl, pattern="Capital Expenditure")
-capex = as.matrix(df[filterCapex])
+capex = df[filterCapex]
+capexChange = capex[,-1] - capex[,-ncol(capex)]
 
 #Depreciation
-Depreciation
 filterDepr = sapply(names(df), grepl, pattern="Depreciation")
-Depreciation = as.matrix(df[filterDepr])
+Depreciation = df[filterDepr]
+DeprChange = Depreciation[,-1] - Depreciation[,-ncol(Depreciation)]
 
 #Liabilties
 filterLiab = sapply(names(df), grepl, pattern="Total Liabilities ")
-liabilities = as.matrix(df[filterLiab])
+liabilities = df[filterLiab]
 
 #Equity
 filterEquity = sapply(names(df), grepl, pattern="Market Cap")
-equity = as.matrix(df[filterEquity])
+equity = df[filterEquity]
 equity = equity[,1:21]
 
 #Leverage
 leverage = liabilities/(liabilities+equity)
 leverage[mapply(is.infinite, leverage)] = NA
-leverage = as.matrix(leverage)
+#leverage = as.matrix(leverage)
+levrChange = leverage[,-1] - leverage[,-ncol(leverage)]
 
 #Net margin
 netMargin = netIncome/revenue
 netMargin[mapply(is.infinite, netMargin)] = NA
-netMargin = as.matrix(netMargin)
+#netMargin = as.matrix(netMargin)
+netMargChange = netMargin[,-1] - netMargin[,-ncol(netMargin)]
 
 #RD Intensity 
 RDIntensity = RD/revenue
 RDIntensity[mapply(is.infinite, RDIntensity)] = NA
 RDIntensity[RDIntensity<=0] = NA
-RDIntensity = as.matrix(RDIntensity) #rowMeans(RDIntensity[,-1])
+#RDIntensity = as.matrix(RDIntensity)
+RDIntensityChange = RDIntensity[,-1] - RDIntensity[,-ncol(RDIntensity)]
 
 #Capex Intensity 
 CapexIntensity = capex/revenue
 CapexIntensity[mapply(is.infinite, CapexIntensity)] = NA
 CapexIntensity[CapexIntensity<=0] = NA
-CapexIntensity = as.matrix(CapexIntensity) #rowMeans(CapexIntensity[,-1])
+#CapexIntensity = as.matrix(CapexIntensity)
+CapexIntensityChange = CapexIntensity[,-1] - CapexIntensity[,-ncol(CapexIntensity)]
 
-#firm, industry and country fixed effects for panel data
+#Depr Intensity 
+DeprIntensity = Depreciation/revenue
+DeprIntensity[mapply(is.infinite, DeprIntensity)] = NA
+DeprIntensity[DeprIntensity<=0] = NA
+#DeprIntensity = as.matrix(DeprIntensity)
+DeprIntensityChange = DeprIntensity[,-1] - DeprIntensity[,-ncol(DeprIntensity)]
+
+#firm, sector and region fixed effects for panel data
 #"factor" creates dummy variables. Automatically omits one dummy to avoid collinearity problem
-sectorDummies = factor(as.matrix(df["Primary Sector"])) #12 sectors
-geoDummies = factor(as.matrix(df["Geographic Region"])) #5 regions
-firmDummies = factor(as.matrix(df["Company Name"]))
+sectorDummies = factor(df[["Primary Sector"]]) #12 sectors
+geoDummies = factor(df[["Geographic Region"]]) #5 regions
+firmDummies = factor(df[["Company Name"]])
 
 #Panel format----
 startYear = 6
-VinstMarginal = c(netMargin[,startYear:21])
-NettoVinst = c(netIncome[,startYear:21])
+NettoVinst = unlist(NIChange[,startYear:20])
+NettoVinstLag = unlist(NIChange[,(startYear-1):19])
+NettoVinstLag2 = unlist(NIChange[,(startYear-2):18])
+NettoVinstNivå = unlist(netIncome[,startYear:20])
+NettoVinstMedel = rowMeans(netIncome[,startYear:20])
+NettoVinstFrånMedelvärdet = NettoVinstNivå - NettoVinstMedel
 
-FoU20 = c(RDIntensity[,startYear:21])
-FoU19 = c(RDIntensity[,(startYear-1):20])
-FoU18 = c(RDIntensity[,(startYear-2):19])
-FoU17 = c(RDIntensity[,(startYear-3):18])
-FoU16 = c(RDIntensity[,(startYear-4):17])
-FoU15 = c(RDIntensity[,(startYear-5):16])
-FoU = c(RDIntensity[,1:21])
+VinstMarginal = unlist(netMargChange[,startYear:20])
+VinstMarginalLag = unlist(netMargChange[,(startYear-1):19])
+VinstMarginalLag2 = unlist(netMargChange[,(startYear-2):18])
+VinstMarginalNivå = unlist(netMargin[,startYear:20])
+VinstMarginalNivåMedel = rowMeans(netMargin[,startYear:20])
+VinstMarginalFrånMedelvärdet = VinstMarginalNivå - VinstMarginalNivåMedel
 
-Capex20 = c(CapexIntensity[,startYear:21])
-Capex19 = c(CapexIntensity[,(startYear-1):20])
-Capex18 = c(CapexIntensity[,(startYear-2):19])
-Capex17 = c(CapexIntensity[,(startYear-3):18])
-Capex16 = c(CapexIntensity[,(startYear-4):17])
-Capex15 = c(CapexIntensity[,(startYear-5):16])
-Capex = c(CapexIntensity[,1:21])
-Avskriv = c(Depreciation[,1:21])
+FoU = unlist(RDChange[,startYear:20])
+FoULag1 = unlist(RDChange[,(startYear-1):19])
+FoULag2 = unlist(RDChange[,(startYear-2):18])
+FoULag3 = unlist(RDChange[,(startYear-3):17])
+FoULag4 = unlist(RDChange[,(startYear-4):16])
+FoULag5 = unlist(RDChange[,(startYear-5):15])
 
-`D/A` = c(leverage[,startYear:21])
-Företag = rep(firmDummies, 22-startYear)
+FoUInt = unlist(RDIntensityChange[,startYear:20])
+FoUIntLag1 = unlist(RDIntensityChange[,(startYear-1):19])
+FoUIntLag2 = unlist(RDIntensityChange[,(startYear-2):18])
+FoUIntLag3 = unlist(RDIntensityChange[,(startYear-3):17])
+FoUIntLag4 = unlist(RDIntensityChange[,(startYear-4):16])
+FoUIntLag5 = unlist(RDIntensityChange[,(startYear-5):15])
+
+Avskriv = unlist(DeprChange[,startYear:20])
+CapexLag1 = unlist(capexChange[,(startYear-1):19])
+CapexLag2 = unlist(capexChange[,(startYear-2):18])
+CapexLag3 = unlist(capexChange[,(startYear-3):17])
+CapexLag4 = unlist(capexChange[,(startYear-4):16])
+CapexLag5 = unlist(capexChange[,(startYear-5):15])
+
+AvskrivInt = unlist(DeprIntensityChange[,startYear:20])
+CapexIntLag1 = unlist(CapexIntensityChange[,(startYear-1):19])
+CapexIntLag2 = unlist(CapexIntensityChange[,(startYear-2):18])
+CapexIntLag3 = unlist(CapexIntensityChange[,(startYear-3):17])
+CapexIntLag4 = unlist(CapexIntensityChange[,(startYear-4):16])
+CapexIntLag5 = unlist(CapexIntensityChange[,(startYear-5):15])
+CapexInt = unlist(CapexIntensityChange)
+
+Skuldsättning = unlist(levrChange[,startYear:20])
+Företag = rep(firmDummies, 21-startYear)
+Period = rev(rep(startYear:20, each=nrow(RDIntensityChange)))
 # Sektor = rep(sectorDummies,startYear)
 # GeografisktOmråde = rep(geoDummies,startYear)
 # `Vinstmarginal 2010-2020` = c(VinstMarginal[,(21-startYear):21])
@@ -130,36 +163,39 @@ Företag = rep(firmDummies, 22-startYear)
 # Försäljning16 = c(revenue[,(startYear-4):17])
 
 
-#all
+
+allNoDupes = data.frame(Företag,Period,
+                        NettoVinst,NettoVinstLag,NettoVinstLag2,NettoVinstFrånMedelvärdet,
+                        VinstMarginal,VinstMarginalLag,VinstMarginalLag2,VinstMarginalFrånMedelvärdet,
+                        FoU,FoULag1,FoULag2,FoULag3,FoULag4,FoULag5,
+                        FoUInt,FoUIntLag1,FoUIntLag2,FoUIntLag3,FoUIntLag4,FoUIntLag5,
+                        Avskriv,CapexLag1,CapexLag2,CapexLag3,CapexLag4,CapexLag5,
+                        AvskrivInt,CapexIntLag1,CapexIntLag2,CapexIntLag3,CapexIntLag4,CapexIntLag5,
+                        Skuldsättning)
+
+levels = data.frame(NettoVinst,NettoVinstLag,
+                    NettoVinstLag2,NettoVinstFrånMedelvärdet,
+                    FoU,FoULag1,FoULag2,FoULag3,FoULag4,FoULag5,
+                    Avskriv,CapexLag1,CapexLag2,CapexLag3,CapexLag4,CapexLag5,
+                    Skuldsättning)
+marg = data.frame(VinstMarginal,VinstMarginalLag,
+                  VinstMarginalLag2,VinstMarginalFrånMedelvärdet,
+                  FoUInt,FoUIntLag1,FoUIntLag2,FoUIntLag3,FoUIntLag4,FoUIntLag5,
+                  AvskrivInt,CapexIntLag1,CapexIntLag2,CapexIntLag3,CapexIntLag4,CapexIntLag5,
+                  Skuldsättning)
 
 
-# all = cbind(NettoVinst,FoU20,FoU19,FoU18,FoU17,FoU16,
-#             Capex,`D/A`)
-
-n = max(length(NettoVinst), 
-         length(VinstMarginal),
-         length(FoUAll),
-         length(CapexAll),
-         length(`D/A`))
-
-length(NettoVinst) = n
-length(VinstMarginal) = n
-length(FoUAll) = n
-length(CapexAll) = n
-length(`D/A`) = n
-allNoDupes = cbind(NettoVinst,VinstMarginal,FoU,
-            Capex,`D/A`)
 
 #Tests on data----
 
 #Descriptives
 summary(NettoVinst)
 summary(VinstMarginal)
-summary(FoUAll)
-summary(CapexAll)
-summary(`D/A`)
+summary(FoU)
+summary(Capex)
+summary(Avskriv)
+summary(Skuldsättning)
 a = summary(allNoDupes)
-View(a)
 
 
 library(moments)
@@ -221,21 +257,20 @@ plot(c(RDIntensity[,9:19]),c(netIncome[,11:21]), log="xy")
 plot(c(RD[,9:19]),c(netMargin[,11:21]), log="xy")
 
 #Does it look normal?----
-hist(FoU20)
+hist(FoU)
 hist(NettoVinst)
 plot(FoU)
-plot(FoU20)
 plot(NettoVinst)
 plot(VinstMarginal)
 quantile(round(NettoVinst,3),na.rm=T,prob = seq(0, 1, length = 101))
-qqnorm(FoU20)
+qqnorm(FoU)
 qqnorm(NettoVinst)
 
 #RD logarithm
-hist(FoU20)
-test = as.vector(na.omit(FoU20))
+hist(FoU)
+test = as.vector(na.omit(FoU))
 jarque.test(test)
-logTest = log(FoU20)
+logTest = log(FoU)
 logTest = as.vector(na.omit(logTest))
 summary(logTest)
 hist(logTest,breaks=50)
@@ -356,21 +391,18 @@ reg1 = lm(netMargin[,21] ~ log(RD[,19]) + log(RDIntensity[,19]) + log(Sales[,19:
 reg2 = lm(netMargin[,16] ~ rowMeans(RD[,10:15]) + rowMeans(RDIntensity[,10:15]) + Sales[,15:16] + employees[,15:16], na.action=na.omit)
 #we can take the logarithm if necessary
 
-# library(plm)
-# pdata = pdata.frame(df, index = c("Company Name","t"))
-# regFixed = plm(netIncome[,11:21] ~ RDIntensity[,10:20] + RDIntensity[,9:19] + RDIntensity[,8:18] + RDIntensity[,11:21] + revenue[,10:20] + revenue[,11:21] +  sectorDummies + geoDummies, na.action=na.omit)
 
-#Regression models----
-standardModel = lm(NettoVinst ~ FoU20 + FoU19 + FoU18 + Sektor + GeografisktOmråde, na.action=na.omit)
-logModel = lm(NettoVinstTransform ~ FoU20 + FoU19 + FoU18 + Sektor + GeografisktOmråde, na.action=na.omit)
-rootModel = lm(rootTransform ~ FoU20 + FoU19 + FoU18 + Sektor + GeografisktOmråde, na.action=na.omit)
-negLogModel = lm(negLogTransform ~ FoU20 + FoU19 + FoU18 + Sektor + GeografisktOmråde, na.action=na.omit)
-robinRootModel = lm(robinTransform ~ FoU20 + FoU19 + FoU18 + Sektor + GeografisktOmråde, na.action=na.omit)
+#Transformed models----
+standardModel = lm(NettoVinst ~ FoU + FoULag1 + FoULag2 + Sektor + GeografisktOmråde, na.action=na.omit)
+logModel = lm(NettoVinstTransform ~ FoU + FoULag1 + FoULag2 + Sektor + GeografisktOmråde, na.action=na.omit)
+rootModel = lm(rootTransform ~ FoU + FoULag1 + FoULag2 + Sektor + GeografisktOmråde, na.action=na.omit)
+negLogModel = lm(negLogTransform ~ FoU + FoULag1 + FoULag2 + Sektor + GeografisktOmråde, na.action=na.omit)
+robinRootModel = lm(robinTransform ~ FoU + FoULag1 + FoULag2 + Sektor + GeografisktOmråde, na.action=na.omit)
 
 #FoU logged
-standardModelFoUlog = lm(NettoVinst ~ log(FoU20) + log(FoU19) + log(FoU18) + Sektor + GeografisktOmråde, na.action=na.omit)
-negLogModelFoUlog = lm(negLogTransform ~ log(FoU20) + log(FoU19) + log(FoU18) + Sektor + GeografisktOmråde, na.action=na.omit)
-robinRootModelFoUlog = lm(robinTransform ~ log(FoU20) + log(FoU19) + log(FoU18) + Sektor + GeografisktOmråde, na.action=na.omit)
+standardModelFoUlog = lm(NettoVinst ~ log(FoU) + log(FoULag1) + log(FoULag2) + Sektor + GeografisktOmråde, na.action=na.omit)
+negLogModelFoUlog = lm(negLogTransform ~ log(FoU) + log(FoULag1) + log(FoULag2) + Sektor + GeografisktOmråde, na.action=na.omit)
+robinRootModelFoUlog = lm(robinTransform ~ log(FoU) + log(FoULag1) + log(FoULag2) + Sektor + GeografisktOmråde, na.action=na.omit)
 
 
 #Transform back
@@ -420,73 +452,148 @@ stargazer(standardModel,standardModelFoUlog,negLogModel,negLogModelFoUlog,robinR
 
 #Better models----
 
-#Simple slopes
-simpleFirmFixed = lm(NettoVinstTransform ~ FoU20 + FoU19 + FoU18 + FoU17 + FoU16 + Företag, na.action=na.omit)
-summary(simpleFirmFixed)
+formula = VinstMarginal ~ VinstMarginalFrånMedelvärdet + VinstMarginalLag + 
+  FoUInt + FoUIntLag1 + FoUIntLag2 + FoUIntLag3 + FoUIntLag4 + FoUIntLag5 +
+  AvskrivInt + CapexIntLag1 + CapexIntLag2 + CapexIntLag3 + CapexIntLag4 + CapexIntLag5 +
+  Skuldsättning #+ Företag
 
-#slope effects
-regSlopes = lm(NettoVinst ~ FoU20 + FoU19 + FoU18 + FoU17 + FoU16 + Sektor + Sektor*FoU19, na.action=na.omit)
-summary(regSlopes)
-
-
-#Firm-fixed effects (borde kanske byta ut Capex 20 mot avskrivningar)
-firmFixedVinstMarginal = lm(VinstMarginal ~ FoU20 + FoU19 + FoU18 + FoU17 + FoU16 + 
-                        Capex20 + Capex19 + Capex18 + Capex17 + Capex16 +
-                        `D/A` + Företag, na.action=na.omit)
+#Firm-fixed effects
+#firmFixedVinstMarginal = lm(formula, na.action=na.omit)
+# library(MatrixModels)
+# faster = glm4(formula, na.action=na.omit, sparse=TRUE)
 
 
+library(plm)
+pdata = pdata.frame(allNoDupes, index = c("Företag","Period"))
+firmRandom = plm(formula, effect="individual", model= "random", data=pdata)
+firmFixed = plm(formula, effect="individual", model= "within", data=pdata)
 
-library(SparseM)
-library(MatrixModels)
-library(Matrix)
-faster <- glm4(VinstMarginal ~ FoU20 + FoU19 + FoU18 + FoU17 + FoU16 + 
-                        Capex20 + Capex19 + Capex18 + Capex17 + Capex16 +
-                        `D/A` + Företag, 
-                      na.action=na.omit,sparse=TRUE)
+#Slumpmässig eller fasteffekt
+phtest(firmFixed,firmRandom)
+summary(firmFixed) #bättre
 
 
-firmFixedResiduals = residuals(firmFixedVinstMarginal)
-summary(fixedEffectResiduals)
+#dynamic model
+lagFormulaProfit = NettoVinst ~ NettoVinstFrånMedelvärdet + NettoVinstLag + 
+  FoU + FoULag1 + FoULag2 + FoULag3 + FoULag4 + FoULag5 +
+  Avskriv + CapexLag1 + CapexLag2 + CapexLag3 + CapexLag4 + CapexLag5 +
+  Skuldsättning|.-NettoVinstLag+NettoVinstLag2
 
+lagFormulaMargin = VinstMarginal ~ VinstMarginalFrånMedelvärdet + VinstMarginalLag + 
+  FoUInt + FoUIntLag1 + FoUIntLag2 + FoUIntLag3 + FoUIntLag4 + FoUIntLag5 +
+  AvskrivInt + CapexIntLag1 + CapexIntLag2 + CapexIntLag3 + CapexIntLag4 + CapexIntLag5 +
+  Skuldsättning| . -VinstMarginalLag+VinstMarginalLag2
+
+lagFormulaMarginNoIV = VinstMarginal ~ VinstMarginalFrånMedelvärdet + VinstMarginalLag + 
+  FoUInt + FoUIntLag1 + FoUIntLag2 + FoUIntLag3 + FoUIntLag4 + FoUIntLag5 +
+  AvskrivInt + CapexIntLag1 + CapexIntLag2 + CapexIntLag3 + CapexIntLag4 + CapexIntLag5 +
+  Skuldsättning##| . -VinstMarginalLag+VinstMarginalLag2
+
+dynamicProfit = plm(lagFormulaProfit, effect="individual", model= "within", data=pdata)
+dynamicMargin = plm(lagFormulaMargin, effect="individual", model= "within", data=pdata)
+summary(dynamicProfit)
+summary(dynamicMargin)
+
+dynamicMarginPooled = plm(formula, model= "pooling", data=pdata)
+summary(dynamicMarginPooled)
+dynamicMarginNoIV = plm(lagFormulaMarginNoIV, effect="individual", model= "within", data=pdata)
 
 #Residual analysis----
+
+residualer = c(residuals(dynamicMargin))
+summary(residualer)
 #Model residuals
 
 #Normalitet
 library(moments)
-JB = jarque.test(fixedEffectResiduals)
-hist(fixedEffectResiduals,breaks=100)
+JB = jarque.test(residualer)
+hist(residualer,breaks=200,main="Histogram för residulerna", 
+     ylab="Frekvens", xlab = "Residual")
+qqPlot(residualer,id=F, xlab = "Normalfördelning", ylab = "Modellresidualer")
 
-#Autokorrelation och heteroskedasticitet
+#trash
+# changeNames = marg
+# rownames(changeNames) = paste("F",rownames(changeNames),sep="")
+
+
 library(lmtest)
-BG = bgtest(firmFixedVinstMarginal,10)
-BP = bptest(firmFixedVinstMarginal)
+#Autokorrelation
+BG = bgtest(lagFormulaMarginNoIV,10,data=marg)
+
+#Heteroskedasticitet
+BP = bptest(lagFormulaMarginNoIV,data=marg)
+residualsAndNetMargin = data.frame(residualer,dynamicMargin$model$VinstMarginal)
+xy = residualsAndNetMargin[residualsAndNetMargin[,2]>-96,]
+plot(xy$residualer,xy$dynamicMargin.model.VinstMarginal,
+     xlab = "Residualer", ylab="VinstMarginal")
+
+
+library(DescTools)
+outRemoved = Winsorize(marg,probs = c(0.01, 0.99), na.rm=T)
+plot(VinstMarginal,FoUIntLag1)
+hist(VinstMarginal, breaks=100)
+
+heteroCheck = data.frame(VinstMarginal,FoUIntLag1)
+#heteroCheck = allNoDupes[allNoDupes[,"VinstMarginal"]>,]
+outRemoved = heteroCheck[heteroCheck < quantile(heteroCheck,0.95,na.rm=T) & heteroCheck > quantile(heteroCheck,0.05,na.rm=T),]
+outRemoved = heteroCheck[abs(heteroCheck[,1])<200&abs(heteroCheck[,2])<200,]
+plot(unlist(outRemoved["FoUIntLag1"]), unlist(outRemoved["VinstMarginal"]))
+
 
 #Multikollinearitet
 library(car)
-vifResultat = vif(firmFixedVinstMarginal)
+vifMarg = data.frame(round(vif(dynamicMarginPooled),2))
+colnames(vifMarg)=c("VIF")
 #Vif rule of thumb: if vif>10, we have multicollinearity
-write.csv(vifResultat, "vif.csv")
+write.csv(vifMarg, "vif.csv")
+
+#Multicollinearitet
+corrNivå = round(cor(levels,use = "complete.obs"),2)
+corrMarg = round(cor(marg[,-1],use = "complete.obs"),2)
+corrMarg[upper.tri(corrMarg,diag=T)] = ""
+write.csv(corrMarg, "corr.csv")
+
+corrMargAll = round(cor(marg,use = "complete.obs"),2)
+write.csv(corrMargAll, "corr2.csv")
 
 
-#Slumpmässig eller fasteffekt
-#phtest(random,fixed)
+diagnostics = rbind(c(JB$p.value, JB$statistic),
+                    c(BP$p.value, BP$statistic),
+                    c(BG$p.value, BG$statistic))
+diagnostics = round(diagnostics,3)
+diagReport = data.frame(c("Jarque-Bera", "Breusch-Pagan", "Breusch-Godfrey"),
+                        diagnostics)
 
+diagnostics = list(c("Jarque-Bera", round(JB$p.value,3), JB$statistic),
+                         c("Breusch-Pagan", round(BP$p.value,3), BP$statistic),
+                         c("Breusch-Godfrey", round(BG$p.value,3), BG$statistic))
+diagnostics = lapply(diagnostics[-1,],round,3)
+dynamicMarginNoIV$JB <- JB$statistic
+dynamicMarginNoIV$JB.p.value <- JB$p.value
+
+#Robust errors
+library("sandwich")
+cov1 = vcovHC(dynamicMargin, type = "HC3")
+robustSE = sqrt(diag(cov1))
 
 
 #Reporting----
 library(stargazer)
-stargazer(
-  firmFixedVinstMarginal,
+report = stargazer(dynamicMarginNoIV,
   type = "text",
-  out = "modell.html",
-  title = "Modell",
+  out = "dynamiskModell3.html",
+  title = "",
   style = "default",
   omit=c("Företag","Sektor"),
-  add.lines(JB,BG,BP)
-  #flip = T,
-  #digits = 2,
+  #keep.stat=c("JB","JB.p.value")
+  digits = 2,
   #digits.extra = 0,
+  add.lines = diagnostics,
+  se = list(robustSE), 
+  no.space = T,
+  report=("vc*sp"),
+  notes.label ="",
+  single.row = T
 )
 
 
@@ -495,10 +602,6 @@ library(ggplot2)
 ggplot(df, aes())
 
 
-#robust standard errors
-library(lmtest); library(sandwich);
-res.robustHC  = coeftest(reg1, vcov=vcovHC(reg1, type=c("HC0")));   # HC0: Claasic White (1980), available: HC0, HC1, HC2, HC3, HC4, HC4m, HC5, const (OLS)
-robustHCse    = sqrt(diag(vcovHC(reg1, type=c("HC0"))));
 
 
 library(stargazer);
@@ -529,15 +632,6 @@ table(df[,5])
 
 
 
-# m=3
-# for(n in 2012:2020){
-#   names(df)[m] = paste("RD", n, sep="")
-#   names(df)[m+9] = paste("Revenue", n, sep="")
-#   names(df)[m+9*2] = paste("return", n, sep="")
-#   m=m+1
-# }
-# names(df)[30] = paste("return", 2021, sep="")
-# rm(m,n)
 
 
 
