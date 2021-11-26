@@ -108,15 +108,15 @@ startYear = 6
 NettoVinst = unlist(NIChange[,startYear:20])
 NettoVinstLag = unlist(NIChange[,(startYear-1):19])
 NettoVinstLag2 = unlist(NIChange[,(startYear-2):18])
-NettoVinstNivå = unlist(netIncome[,startYear:20])
-NettoVinstMedel = rowMeans(netIncome[,startYear:20])
+NettoVinstNivå = unlist(netIncome[,(startYear-1):19])
+NettoVinstMedel = rowMeans(netIncome[,(startYear-1):19])
 NettoVinstFrånMedelvärdet = NettoVinstNivå - NettoVinstMedel
 
 VinstMarginal = unlist(netMargChange[,startYear:20])
 VinstMarginalLag = unlist(netMargChange[,(startYear-1):19])
 VinstMarginalLag2 = unlist(netMargChange[,(startYear-2):18])
-VinstMarginalNivå = unlist(netMargin[,startYear:20])
-VinstMarginalNivåMedel = rowMeans(netMargin[,startYear:20])
+VinstMarginalNivå = unlist(netMargin[,(startYear-1):19])
+VinstMarginalNivåMedel = rowMeans(netMargin[,(startYear-1):19])
 VinstMarginalFrånMedelvärdet = VinstMarginalNivå - VinstMarginalNivåMedel
 
 FoU = unlist(RDChange[,startYear:20])
@@ -154,7 +154,7 @@ Period = rev(rep(startYear:20, each=nrow(RDIntensityChange)))
 # Sektor = rep(sectorDummies,startYear)
 # GeografisktOmråde = rep(geoDummies,startYear)
 # `Vinstmarginal 2010-2020` = c(VinstMarginal[,(21-startYear):21])
-#levels(Sektor) = c("-", "Telekom", "Utökad konsumtion", "Dagligvarukonsumtion","Energi","Finans","Hälsa","Industri","IT","Råvaror","Fastigheter","Tjänster")
+levels(Sektor) = c("-", "Telekom", "Utökad konsumtion", "Dagvarukonsumtion","Energi","Finans","Hälsa","Industri","IT","Råvaror","Fastigheter","Tjänster")
 #https://sp500.se/sp500-och-de-olika-sektorerna/
 # Försäljning20 = c(revenue[,startYear:21])
 # Försäljning19 = c(revenue[,(startYear-1):20])
@@ -235,8 +235,13 @@ library(fUnitRoots)
 adfTest(Nettovinst, lags = 252, type = c("nc"), title = NULL, description = NULL)
 
 library(urca)
-panelRoots <- ca.jo(all, type = "trace", ecdet = "const", K = 3)
-summary(panelRoots)
+marginRoots <- ca.jo(levels[,1:10], type = "trace", ecdet = "const", K = 2)
+summary(marginRoots)
+profitRoots <- ca.jo(marg, type = "trace", ecdet = "const", K = 3)
+summary(profitRoots)
+
+
+purtest(marg)
 
 #Test for cointegration
 
@@ -452,15 +457,10 @@ stargazer(standardModel,standardModelFoUlog,negLogModel,negLogModelFoUlog,robinR
 
 #Better models----
 
-formula = VinstMarginal ~ VinstMarginalFrånMedelvärdet + VinstMarginalLag + 
-  FoUInt + FoUIntLag1 + FoUIntLag2 + FoUIntLag3 + FoUIntLag4 + FoUIntLag5 +
-  AvskrivInt + CapexIntLag1 + CapexIntLag2 + CapexIntLag3 + CapexIntLag4 + CapexIntLag5 +
-  Skuldsättning #+ Företag
-
-#Firm-fixed effects
-#firmFixedVinstMarginal = lm(formula, na.action=na.omit)
-# library(MatrixModels)
-# faster = glm4(formula, na.action=na.omit, sparse=TRUE)
+# formula = VinstMarginal ~ VinstMarginalFrånMedelvärdet + VinstMarginalLag + 
+#   FoUInt + FoUIntLag1 + FoUIntLag2 + FoUIntLag3 + FoUIntLag4 + FoUIntLag5 +
+#   AvskrivInt + CapexIntLag1 + CapexIntLag2 + CapexIntLag3 + CapexIntLag4 + CapexIntLag5 +
+#   Skuldsättning #+ Företag
 
 
 library(plm)
@@ -478,35 +478,67 @@ lagFormulaProfit = NettoVinst ~ NettoVinstFrånMedelvärdet + NettoVinstLag +
   FoU + FoULag1 + FoULag2 + FoULag3 + FoULag4 + FoULag5 +
   Avskriv + CapexLag1 + CapexLag2 + CapexLag3 + CapexLag4 + CapexLag5 +
   Skuldsättning|.-NettoVinstLag+NettoVinstLag2
+lagFormulaProfitNoIV = NettoVinst ~ NettoVinstFrånMedelvärdet + NettoVinstLag + 
+  FoU + FoULag1 + FoULag2 + FoULag3 + FoULag4 + FoULag5 +
+  Avskriv + CapexLag1 + CapexLag2 + CapexLag3 + CapexLag4 + CapexLag5 +
+  Skuldsättning##|.-NettoVinstLag+NettoVinstLag2
 
 lagFormulaMargin = VinstMarginal ~ VinstMarginalFrånMedelvärdet + VinstMarginalLag + 
   FoUInt + FoUIntLag1 + FoUIntLag2 + FoUIntLag3 + FoUIntLag4 + FoUIntLag5 +
   AvskrivInt + CapexIntLag1 + CapexIntLag2 + CapexIntLag3 + CapexIntLag4 + CapexIntLag5 +
   Skuldsättning| . -VinstMarginalLag+VinstMarginalLag2
-
 lagFormulaMarginNoIV = VinstMarginal ~ VinstMarginalFrånMedelvärdet + VinstMarginalLag + 
   FoUInt + FoUIntLag1 + FoUIntLag2 + FoUIntLag3 + FoUIntLag4 + FoUIntLag5 +
   AvskrivInt + CapexIntLag1 + CapexIntLag2 + CapexIntLag3 + CapexIntLag4 + CapexIntLag5 +
   Skuldsättning##| . -VinstMarginalLag+VinstMarginalLag2
 
-dynamicProfit = plm(lagFormulaProfit, effect="individual", model= "within", data=pdata)
-dynamicMargin = plm(lagFormulaMargin, effect="individual", model= "within", data=pdata)
+dynamicProfit = plm(lagFormulaProfit, effect="twoways", model= "within", data=pdata)
 summary(dynamicProfit)
+dynamicMargin = plm(lagFormulaMargin, effect="twoways", model= "within", data=pdata)
 summary(dynamicMargin)
 
-dynamicMarginPooled = plm(formula, model= "pooling", data=pdata)
+dynamicProfitPooled = plm(lagFormulaProfitNoIV, model= "pooling", data=pdata)
+dynamicMarginPooled = plm(lagFormulaMarginNoIV, model= "pooling", data=pdata)
 summary(dynamicMarginPooled)
-dynamicMarginNoIV = plm(lagFormulaMarginNoIV, effect="individual", model= "within", data=pdata)
+dynamicMarginNoIV = plm(lagFormulaMarginNoIV, effect="twoways", model= "within", data=pdata)
+dynamicProfitNoIV = plm(lagFormulaProfitNoIV, effect="twoways", model= "within", data=pdata)
+
+
+
+#Joint model----
+
+allFoUInt = FoUInt + FoUIntLag1 + FoUIntLag2 + FoUIntLag3 + FoUIntLag4 + FoUIntLag5
+allFoU = FoU + FoULag1 + FoULag2 + FoULag3 + FoULag4 + FoULag5
+  
+
+jointFormulaProfit = NettoVinst ~ NettoVinstFrånMedelvärdet + NettoVinstLag + 
+  allFoU +
+  Avskriv + CapexLag1 + CapexLag2 + CapexLag3 + CapexLag4 + CapexLag5 +
+  Skuldsättning|.-NettoVinstLag+NettoVinstLag2
+
+jointFormulaMargin = VinstMarginal ~ VinstMarginalFrånMedelvärdet + VinstMarginalLag + 
+  allFoUInt +
+  AvskrivInt + CapexIntLag1 + CapexIntLag2 + CapexIntLag3 + CapexIntLag4 + CapexIntLag5 +
+  Skuldsättning| . -VinstMarginalLag+VinstMarginalLag2
+
+jointProfit = plm(jointFormulaProfit, effect="twoways", model= "within", data=pdata)
+summary(jointProfit,vcov=vcovHC(jointProfit, method="arellano", type="HC3"))
+jointMargin = plm(jointFormulaMargin, effect="twoways", model= "within", data=pdata)
+summary(jointMargin,vcov=vcovHC(jointMargin, method="arellano", type="HC3"))
+
 
 #Residual analysis----
 
 residualer = c(residuals(dynamicMargin))
 summary(residualer)
+residualer2 = c(residuals(dynamicProfit))
+summary(residualer2)
 #Model residuals
 
 #Normalitet
 library(moments)
 JB = jarque.test(residualer)
+JB2 = jarque.test(residualer2)
 hist(residualer,breaks=200,main="Histogram för residulerna", 
      ylab="Frekvens", xlab = "Residual")
 qqPlot(residualer,id=F, xlab = "Normalfördelning", ylab = "Modellresidualer")
@@ -519,6 +551,7 @@ qqPlot(residualer,id=F, xlab = "Normalfördelning", ylab = "Modellresidualer")
 library(lmtest)
 #Autokorrelation
 BG = bgtest(lagFormulaMarginNoIV,10,data=marg)
+BG2 = bgtest(lagFormulaProfitNoIV,10,data=marg)
 
 #Heteroskedasticitet
 BP = bptest(lagFormulaMarginNoIV,data=marg)
@@ -526,6 +559,8 @@ residualsAndNetMargin = data.frame(residualer,dynamicMargin$model$VinstMarginal)
 xy = residualsAndNetMargin[residualsAndNetMargin[,2]>-96,]
 plot(xy$residualer,xy$dynamicMargin.model.VinstMarginal,
      xlab = "Residualer", ylab="VinstMarginal")
+BP2 = bptest(lagFormulaProfitNoIV,data=marg)
+
 
 
 library(DescTools)
@@ -543,6 +578,7 @@ plot(unlist(outRemoved["FoUIntLag1"]), unlist(outRemoved["VinstMarginal"]))
 #Multikollinearitet
 library(car)
 vifMarg = data.frame(round(vif(dynamicMarginPooled),2))
+vifProf = data.frame(round(vif(dynamicProfitPooled),2))
 colnames(vifMarg)=c("VIF")
 #Vif rule of thumb: if vif>10, we have multicollinearity
 write.csv(vifMarg, "vif.csv")
@@ -557,6 +593,9 @@ corrMargAll = round(cor(marg,use = "complete.obs"),2)
 write.csv(corrMargAll, "corr2.csv")
 
 
+
+#Diagnostics reporting ----
+
 diagnostics = rbind(c(JB$p.value, JB$statistic),
                     c(BP$p.value, BP$statistic),
                     c(BG$p.value, BG$statistic))
@@ -564,32 +603,46 @@ diagnostics = round(diagnostics,3)
 diagReport = data.frame(c("Jarque-Bera", "Breusch-Pagan", "Breusch-Godfrey"),
                         diagnostics)
 
-diagnostics = list(c("Jarque-Bera", round(JB$p.value,3), JB$statistic),
-                         c("Breusch-Pagan", round(BP$p.value,3), BP$statistic),
-                         c("Breusch-Godfrey", round(BG$p.value,3), BG$statistic))
-diagnostics = lapply(diagnostics[-1,],round,3)
-dynamicMarginNoIV$JB <- JB$statistic
-dynamicMarginNoIV$JB.p.value <- JB$p.value
+diagnostics = list(c("Jarque-Bera", round(JB$p.value,3), round(JB2$p.value,3),JB$statistic),
+                         c("Breusch-Pagan", round(BP$p.value,3),round(BP2$p.value,3), BP$statistic),
+                         c("Breusch-Godfrey", round(BG$p.value,3),round(BG2$p.value,3), BG$statistic))
 
 #Robust errors
 library("sandwich")
 cov1 = vcovHC(dynamicMargin, type = "HC3")
-robustSE = sqrt(diag(cov1))
+robustSE1 = sqrt(diag(cov1))
+cov2 = vcovHC(dynamicProfit,method="arellano")
+robustSE2 = sqrt(diag(cov2))
 
 
 #Reporting----
 library(stargazer)
-report = stargazer(dynamicMarginNoIV,
+report = stargazer(dynamicMargin,dynamicProfit,
   type = "text",
   out = "dynamiskModell3.html",
   title = "",
   style = "default",
   omit=c("Företag","Sektor"),
-  #keep.stat=c("JB","JB.p.value")
   digits = 2,
   #digits.extra = 0,
   add.lines = diagnostics,
-  se = list(robustSE), 
+  se = list(robustSE1,robustSE2), 
+  no.space = T,
+  report=("vc*sp"),
+  notes.label ="",
+  single.row = T
+)
+library(stargazer)
+report2 = stargazer(jointMargin,jointProfit,
+  type = "text",
+  out = "dynamiskModell3.html",
+  title = "",
+  style = "default",
+  omit=c("Företag","Sektor"),
+  digits = 2,
+  #digits.extra = 0,
+  add.lines = diagnostics,
+  se = list(robustSE1,robustSE2), 
   no.space = T,
   report=("vc*sp"),
   notes.label ="",
@@ -620,20 +673,47 @@ stargazer(firmFixedVinstMarginal,
 
 
 
+companiesWithData = names(dynamicMargin$model$VinstMarginal)
+companiesWithoutEnd = gsub("\\d+$", "", companiesWithData)
+noMinus = gsub("-$", "", companiesWithoutEnd)
+freqTable = data.frame(table(noMinus,dnn = c("Name")))
+withCountryAndSector = merge(df,freqTable,by.x = "Company Name",by.y = "Name")
 
-indus = table(df[,3])
-countries = table(df[,5])
-table(df[,5])
+sectr = table(withCountryAndSector["Primary Sector"])
+sectr = as.data.frame(sectr)
+colnames(sectr) = c("Sektor","Företag")
+sectr[,1] = c("Telekom", "Diskretionär konsumtion", "Dagvarukonsumtion","Energi","Finans","Hälsa","Industri","IT","Råvaror","Fastigheter","Tjänster")
+write.csv(sectr, file = "sectors.csv")
+
+countries = table(withCountryAndSector["Country/Region of Incorporation"])
+countries=as.data.frame(countries)
+colnames(countries) = c("Land","Företag")
+countries[,1] = c("Japan", "Sydkorea", "Taiwan")
+write.csv(countries, file = "countries.csv")
+
+#number of time periods
+sectorFreq = aggregate(withCountryAndSector$Freq, by=list(Category=withCountryAndSector$`Primary Sector`), FUN=sum)
+countryFreq = aggregate(withCountryAndSector$Freq, by=list(Category=withCountryAndSector$`Country/Region of Incorporation`), FUN=sum)
 
 
-#write.table(indus, file = "industries.csv")
+cNs = table(withCountryAndSector[c("Primary Sector","Country/Region of Incorporation")])
+colnames(cNs) = c("Japan", "Sydkorea", "Taiwan")
+rownames(cNs) = c("Telekom", "Diskretionär konsumtion", "Dagvarukonsumtion","Energi","Finans","Hälsa","Industri","IT","Råvaror","Fastigheter","Tjänster")
+write.csv(cNs, file = "cNs.csv")
 
 
-
-
-
-
-
-
-
+library(moments)
+skew2 = skewness(withCountryAndSector)
+kurt2 = kurtosis(withCountryAndSector)
+stargazer(withCountryAndSector,
+          type = "text",
+          out = "desc2.html",
+          title = "Deskriptiv statistik",
+          flip = T,
+          digits = 2,
+          digits.extra = 0,
+          median=T,
+          align	=T,
+          add.lines = list(skew2,kurt2)
+)
 
