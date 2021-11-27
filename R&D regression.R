@@ -186,6 +186,7 @@ marg = data.frame(VinstMarginal,VinstMarginalLag,
 
 
 
+
 #Tests on data----
 
 #Descriptives
@@ -230,20 +231,20 @@ Box.test(netIncome,lag=1,type="Ljung-Box")
 
 
 
-#Unit root (modify for panel data)
+#Unit root
 library(fUnitRoots)
 adfTest(Nettovinst, lags = 252, type = c("nc"), title = NULL, description = NULL)
 
+#Test for cointegration?
 library(urca)
 marginRoots <- ca.jo(levels[,1:10], type = "trace", ecdet = "const", K = 2)
 summary(marginRoots)
 profitRoots <- ca.jo(marg, type = "trace", ecdet = "const", K = 3)
 summary(profitRoots)
 
-
+#Unit root for panel data
 purtest(marg)
 
-#Test for cointegration
 
 
 
